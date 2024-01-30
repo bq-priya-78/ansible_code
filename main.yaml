@@ -1,0 +1,37 @@
+---
+- name: Install kOps and kubectl, create state store
+  hosts: test
+  gather_facts: false
+  become: true
+
+  vars_files:
+    ././groupvars/vars.yaml
+  
+  tasks:
+    - name: Install kOps
+      ansible.builtin.shell:
+        cmd: |
+          curl -Lo kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-{{ vars.kubectl_os }}-{{ vars.kops_arch }}
+          chmod +x ./kops
+          mv ./kops /usr/local/bin/
+
+    - name: Install kubectl
+      ansible.builtin.shell:
+        cmd: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/{{ vars.kubectl_os }}/{{ vars.kops_arch }}/kubectl"
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/{{ vars.kubectl_os }}/{{ vars.kops_arch }}/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+          install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+    - name: Create state store
+      ansible.builtin.shell:
+        cmd: gsutil mb gs://test/
+      ignore_errors: yes  # Ignore errors if the bucket already exists
+
+    - name: Set KOPS_STATE_STORE environment variable
+      ansible.builtin.set_fact:
+        KOPS_STATE_STORE: "gs://test/"
+
+    - name: Print KOPS_STATE_STORE variable
+      ansible.builtin.debug:
+        msg: "KOPS_STATE_STORE is set to {{ KOPS_STATE_STORE }}"
