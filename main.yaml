@@ -1,5 +1,5 @@
 ---
-- name: Install kOps and kubectl, create state store
+- name: Install kOps and kubectl, create state store, and cluster 
   hosts: test
   gather_facts: false
   become: true
@@ -23,15 +23,36 @@
           echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
           install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
+    - name: Check if bucket exists
+      ansible.builtin.stat:
+        path: gs://{{ vars.bucket_name }}
+      register: bucket_status
+
+    - name: Debug bucket status
+      ansible.builtin.debug:
+        var: bucket_status
+
     - name: Create state store
       ansible.builtin.shell:
-        cmd: gsutil mb gs://test/
-      ignore_errors: yes  # Ignore errors if the bucket already exists
+        cmd: gsutil mb gs://{{ vars.bucket_name }}/
+      when: bucket_status.stat.exists == False # Skip if the bucket already exists
+      ignore_errors: yes  
 
     - name: Set KOPS_STATE_STORE environment variable
       ansible.builtin.set_fact:
-        KOPS_STATE_STORE: "gs://test/"
+        KOPS_STATE_STORE: "gs://{{ vars.bucket_name }}/"
 
-    - name: Print KOPS_STATE_STORE variable
-      ansible.builtin.debug:
-        msg: "KOPS_STATE_STORE is set to {{ KOPS_STATE_STORE }}"
+    - name: Create Kops cluster
+      ansible.builtin.shell:
+        cmd: |
+          export PROJECT=$(gcloud config get-value project)
+          kops create cluster {{ vars.cluster_name }} --zones us-central1-a --state {{ KOPS_STATE_STORE }} --project=${PROJECT}
+      ignore_errors: yes
+
+    - name: Run kops get instancegroup command
+      command: kops get instancegroup --state {{ KOPS_STATE_STORE }} --name {{ vars.cluster_name }}
+      register: kops_output
+
+    - name: Display the command output
+      debug:
+        var: kops_output.stdout_lines

@@ -1,2 +1,5 @@
 kops_arch: amd64  # Replace with the desired machine architecture (e.g., amd64, arm64)
 kubectl_os: linux  # Replace with the desired OS name (e.g., linux, darwin for macOS)
+bucket_name: test-ansible # Replace with the desired and globally unique name 
+cluster_name: simple.k8s.local # Replace with the desired and fully-qualified DNS name (e.g. --name=mycluster.myzone.com)"
+
