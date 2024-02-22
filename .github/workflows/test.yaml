@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: "us-east-1"
-  ECR_REPOSITORY: test
+  ECR_REPOSITORY: test123
   ENVIRONMENT: STAGE
   GH_USER_TOKEN: ${{ secrets.GH_USER_TOKEN }}
   GH_USER_NAME: ${{ secrets.GH_USER_NAME }}
@@ -27,7 +27,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: arn:aws:iam::670201965700:role/github-actions-role
+          role-to-assume: arn:aws:iam::670201965700:role/github-role
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GithubActions
 
