@@ -1,0 +1,52 @@
+name: Deploy ECS Stage
+
+on:
+  push:
+    branches:
+      - 'ansible_code'
+
+env:
+  AWS_REGION: "us-east-1"
+  ECR_REPOSITORY: test
+  ENVIRONMENT: STAGE
+  GH_USER_TOKEN: ${{ secrets.GH_USER_TOKEN }}
+  GH_USER_NAME: ${{ secrets.GH_USER_NAME }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: sleep 5
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::670201965700:role/github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GithubActions
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ENV: stage
+        run: |
+          docker buildx build --build-arg env=$ENV --build-arg GH_USER_NAME=${{ env.GH_USER_NAME }} --build-arg GH_USER_TOKEN=${{ env.GH_USER_TOKEN }} --platform=linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.ENVIRONMENT }} .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.ENVIRONMENT }}          
+      
+      # - name: Deploy marketplace-api
+      #   uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      #   with:
+      #     task-definition: ecs/task_definition/${{ env.ENVIRONMENT }}/marketplace-api.json
+      #     service: marketplace-api-${{ env.ENVIRONMENT }}
+      #     cluster: gaming-api-${{ env.ENVIRONMENT }}
+      #     wait-for-service-stability: true
